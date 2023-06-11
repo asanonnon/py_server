@@ -1,4 +1,3 @@
-import os
 import re
 import traceback
 from re import Match
@@ -10,7 +9,7 @@ from typing import Tuple,Optional
 import settings
 from henango.http.request import HTTPRequest
 from henango.http.response import HTTPResponse
-from urls import URL_VIEW
+from henango.urls.resolver import URLResolver
 
 class Worker(Thread):
     # 拡張子とMINE Typeの対応
@@ -45,35 +44,17 @@ class Worker(Thread):
     
 
             #クライアントから送られてきたデータをファイルに書き出す
-            with open('server_recv.txt',"wb") as f:
+            with open('text/server_recv.txt',"wb") as f:
                 f.write(request_bytes)
 
             #リクエストラインをバースする
             request = self.parse_http_request(request_bytes)
 
-            # pathにマッチするurl_patternを探し、見つかればviewからレスポンスを生成する
-            for url_pattern, view in URL_VIEW.items():
-                match = self.url_match(url_pattern, request.path)
-                if match:
-                    request.params.update(match.groupdict())
-                    response = view(request)
-                    break
-                
-            # pathにマッチするurl_patternが見つからなければ、静的ファイルからレスポンスを生成する
-            else:
-
-                try :
-                    response_body = self.get_static_file_content(request.path)                    
-                    content_type = None
-                    response = HTTPResponse(body=response_body, content_type=content_type, status_code=200)
-
-                except OSError:
-                    # レスポンスを取得できなかった場合は、ログを出して404を返す
-                    traceback.print_exc()
-
-                    response_body = b"<html><body><h1>404 not found\r\n</h1></body></html>"
-                    content_type = "text/html"
-                    response = HTTPResponse(body=response_body, content_type=content_type, status_code=404)
+            # URL解決を試みる
+            view = URLResolver().resolve(request)
+            
+            # URL解決できた場合は、viewからレスポンスを取得する
+            response = view(request)
 
             # レスポンスラインを生成
             response_line = self.build_response_line(response)
