@@ -1,3 +1,4 @@
+import os
 import re
 import traceback
 from re import Match
@@ -35,8 +36,10 @@ class Worker(Thread):
         self.client_address = address
 
     def run(self) -> None:
-        # クライアントとの接続済みのsocketを引数として受け取り、
-        # リクエストを処理してレスポンスを送信
+        """
+        クライアントとの接続済みのsocketを引数として受け取り、
+        リクエストを処理してレスポンスを送信
+        """
 
         try:
             # クライアントから送られてきたデータを取得
@@ -55,6 +58,10 @@ class Worker(Thread):
             
             # URL解決できた場合は、viewからレスポンスを取得する
             response = view(request)
+
+            # レスポンスボディを生成
+            if isinstance(response.body, str):
+                response.body = response.body.encode()
 
             # レスポンスラインを生成
             response_line = self.build_response_line(response)
@@ -124,23 +131,25 @@ class Worker(Thread):
         """
         レスポンスラインを構築
         """
-        print(response.status_code)
         status_line = self.STATUS_LINES[response.status_code]
         return f"HTTP/1.1 {status_line}"
 
     def build_response_header(self,response: HTTPResponse, request: HTTPRequest) -> str:
-        # レスポンスヘッダーを構築する
+        """
+        レスポンスヘッダーを構築する
+        """
 
         # content_typeが指定されていない場合はpathから特定する        
         if response.content_type is None:
             # pathから拡張子を取得
             if "." in request.path:
                 ext = request.path.rsplit(".",maxsplit=1)[-1]
+                # 拡張子からMIME Typeを取得
+                # 知らない対応してない拡張子の場合はoctet-streamとする
+                response.content_type = self.MIME_TYPES.get(ext, "application/octet-stream")
             else:
-                ext = ""
-            # 拡張子からMIME typeを取得
-            # 知らない対応していない拡張子の場合はoctet-streamとする
-            response.content_type = self.MIME_TYPES.get(ext,"application/octet-stream")
+                # pathに拡張子がない場合はhtml扱いする
+                response.content_type = "text/html; charset=UTF-8"
 
         response_header = ""
         response_header += f"Date: {datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')}\r\n"
