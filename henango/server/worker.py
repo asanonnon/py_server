@@ -5,12 +5,12 @@ from re import Match
 from socket import socket
 from datetime import datetime
 from threading import Thread
-from typing import Tuple,Optional
+from typing import Tuple
 
-import settings
 from henango.http.request import HTTPRequest
 from henango.http.response import HTTPResponse
 from henango.urls.resolver import URLResolver
+
 
 class Worker(Thread):
     # 拡張子とMINE Typeの対応
@@ -25,6 +25,7 @@ class Worker(Thread):
     # ステータスコードとステータスラインの対応
     STATUS_LINES = {
         200: "200 OK",
+        302: "302 Found",
         404: "404 Not Found",
         405: "405 Method Allowed",
     }
@@ -107,25 +108,24 @@ class Worker(Thread):
         for header_row in request_header.decode().split("\r\n"):
             key, value = re.split(r": *", header_row, maxsplit=1)
             headers[key] = value
+            
+        
 
-        return HTTPRequest(method=method, path=path, http_version=http_version, headers=headers, body=request_body)
+        cookies = {}
+        if "Cookie" in headers:
+            # str から list　へ変換
+            cookie_strings = headers["Cookie"].split("; ")
 
-    def get_static_file_content(self, path: str) -> bytes:
-        """
-        リクエストpathから、staticファイルの内容を取得する
-        """
+            # list から dict へ変換
+            for cookie_string in cookie_strings:
+                name, value = cookie_string.split("=", maxsplit=1)
+                cookies[name] = value
 
-        defult_static_root = os.path.join(os.path.dirname(__file__))
-        static_root = getattr(settings, "STATIC_ROOT", defult_static_root)
+        print(cookies)
 
-        # pathの先頭の/を削除し、相対パスにしておく
-        relative_path = path.lstrip("/")
-        # ファイルのpathを取得
-        static_file_path = os.path.join(static_root, relative_path)
-
-        with open(static_file_path,"rb") as f:
-            return f.read()
-
+        return HTTPRequest(
+            method=method, path=path, http_version=http_version, headers=headers, cookies=cookies, body=request_body
+        )
 
     def build_response_line(self, response: HTTPResponse) -> str:
         """
@@ -157,5 +157,29 @@ class Worker(Thread):
         response_header += f"Content-Length: {len(response.body)}\r\n"
         response_header += "Connection: Close\r\n"
         response_header += f"Content-Type: {response.content_type}\r\n"
+
+        
+
+        # cookieヘッダーの生成
+        for cookie in response.cookies:
+            cookie_header = f"Set-Cookie: {cookie.name}={cookie.value}"
+            if cookie.expires is not None: 
+                cookie_header += f"; Expires={cookie.expires.strftime('%a, %d %b %Y %H:%M:%S GMT')}"
+            if cookie.max_age is not None:
+                cookie_header += f"; Max-Age={cookie.max_age}"
+            if cookie.domain:
+                cookie_header += f"; Domain={cookie.domain}"
+            if cookie.path:
+                cookie_header += f"; Path={cookie.path}"
+            if cookie.secure:
+                cookie_header += f"; Secure"
+            if cookie.http_only:
+                cookie_header += f"; HttpOnly"
+
+            response_header += cookie_header + "\r\n"
+
+        # その他ヘッダーの生成
+        for header_name, header_value in response.headers.items():
+            response_header += f"{header_name}: {header_value}\r\n"
 
         return response_header

@@ -1,13 +1,18 @@
-GET /show_request HTTP/1.1
+GET /login HTTP/1.1
 Host: localhost:8080
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/113.0
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
-Accept-Language: ja,en-US;q=0.7,en;q=0.3
-Accept-Encoding: gzip, deflate, br
 Connection: keep-alive
+Cache-Control: max-age=0
 Upgrade-Insecure-Requests: 1
-Sec-Fetch-Dest: document
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: same-origin
 Sec-Fetch-Mode: navigate
-Sec-Fetch-Site: none
 Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+sec-ch-ua: "Not.A/Brand";v="8", "Chromium";v="114", "Google Chrome";v="114"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "macOS"
+Referer: http://localhost:8080/login
+Accept-Encoding: gzip, deflate, br
+Accept-Language: ja,en-US;q=0.9,en;q=0.8
 
